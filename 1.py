@@ -29,8 +29,10 @@ if st.button("Рассчитать оптимальное назначение")
     st.write("Максимальная сумма стоимости:", max_total_value)
 
     G = nx.Graph()
-    left_nodes = [f"L{i}" for i in range(cost_matrix.shape[0])]
-    right_nodes = [f"R{j}" for j in range(cost_matrix.shape[1])]
+#    left_nodes = [f"L{i}" for i in range(cost_matrix.shape[0])]
+#    right_nodes = [f"R{j}" for j in range(cost_matrix.shape[1])]
+    left_nodes = [i for i  in ["Иванов", "Петров", "Сидоров"]]
+    right_nodes = [j for j in ["Менеджер","Программист"]]
     G.add_nodes_from(left_nodes, bipartite=0)
     G.add_nodes_from(right_nodes, bipartite=1)
 
