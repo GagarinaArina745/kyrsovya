@@ -3,9 +3,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 import networkx as nx
 from scipy.optimize import linear_sum_assignment
+import time
 
-st.title("Задача о назначениях — ввод матрицы через текст")
+st.title("Задача о назначениях")
 
+# Ввод матрицы стоимости
 default_text = "4 1 3\n2 0 5\n3 2 2"
 text = st.text_area("Введите матрицу стоимости (через пробелы, строки через переносы):", default_text, height=150)
 
@@ -18,47 +20,88 @@ except Exception as e:
     st.error(f"Ошибка при обработке матрицы: {e}")
     st.stop()
 
+# Выбор режима: минимизация или максимизация
+mode = st.radio("Выберите режим расчёта:", ("Минимум стоимости", "Максимум стоимости"))
+
 if st.button("Рассчитать оптимальное назначение"):
-    max_value = cost_matrix.max()
-    transformed_matrix = max_value - cost_matrix
+    start_time = time.time() 
+    if mode == "Минимум стоимости":
+     # Для минимизации используем исходную матрицу
+        row_ind, col_ind = linear_sum_assignment(cost_matrix)
+        total_value = cost_matrix[row_ind, col_ind].sum()
+        mode_text = "Минимальная сумма стоимости"
+    else:
+        # Для максимизации преобразуем матрицу: max - стоимость
+        max_value = cost_matrix.max()
+        transformed_matrix = max_value - cost_matrix
+        row_ind, col_ind = linear_sum_assignment(transformed_matrix)
+        total_value = cost_matrix[row_ind, col_ind].sum()
+        mode_text = "Максимальная сумма стоимости"
 
-    row_ind, col_ind = linear_sum_assignment(transformed_matrix)
-    max_total_value = cost_matrix[row_ind, col_ind].sum()
+    end_time = time.time()  # конец таймера
+    elapsed_time = end_time - start_time
 
-    st.write("Оптимальное назначение:", list(zip(row_ind, col_ind)))
-    st.write("Максимальная сумма стоимости:", max_total_value)
+st.write(f"Результаты ({mode_text}):")
+for i, j in zip(row_ind, col_ind):
+    st.write(f"Работник {i+1} → Профессия {j+1} (Стоимость: {cost_matrix[i,j]})")
+st.write("Общая сумма стоимости:", total_value)
+st.write(f"Время расчёта: {elapsed_time:.4f} секунд")
 
-    G = nx.Graph()
-#    left_nodes = [f"L{i}" for i in range(cost_matrix.shape[0])]
-#    right_nodes = [f"R{j}" for j in range(cost_matrix.shape[1])]
-    left_nodes = [i for i  in ["Иванов", "Петров", "Сидоров"]]
-    right_nodes = [j for j in ["Менеджер","Программист"]]
-    G.add_nodes_from(left_nodes, bipartite=0)
-    G.add_nodes_from(right_nodes, bipartite=1)
+start_time_graph = time.time()
+    # Создаем граф для визуализации
+G = nx.Graph()
 
-    for i in range(cost_matrix.shape[0]):
-        for j in range(cost_matrix.shape[1]):
-            G.add_edge(left_nodes[i], right_nodes[j], weight=cost_matrix[i, j])
+    # Назначим работников и профессии как кружки
+workers = [f"Работник {i+1}" for i in range(cost_matrix.shape[0])]
+professions = [f"Профессия {j+1}" for j in range(cost_matrix.shape[1])]
 
-    pos = dict()
-    pos.update((node, (0, index)) for index, node in enumerate(left_nodes))
-    pos.update((node, (1, index)) for index, node in enumerate(right_nodes))
+G.add_nodes_from(workers, bipartite=0)
+G.add_nodes_from(professions, bipartite=1)
 
-    plt.figure(figsize=(8, 5))
-    nx.draw_networkx_edges(G, pos, alpha=0.3)
-    nx.draw_networkx_nodes(G, pos, nodelist=left_nodes, node_color='skyblue', node_size=500)
-    nx.draw_networkx_nodes(G, pos, nodelist=right_nodes, node_color='lightgreen', node_size=500)
-    nx.draw_networkx_labels(G, pos)
+    # Добавляем все возможные ребра с весами
+for i in range(cost_matrix.shape[0]):
+    for j in range(cost_matrix.shape[1]):
+        G.add_edge(workers[i], professions[j], weight=cost_matrix[i,j])
 
-    edge_labels = {(left_nodes[i], right_nodes[j]): cost_matrix[i, j]
-                   for i in range(cost_matrix.shape[0]) for j in range(cost_matrix.shape[1])}
-    nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels)
+    # Расположение узлов: слева работники, справа профессии
+pos = dict()
+pos.update((node, (0, i)) for i, node in enumerate(workers))
+pos.update((node, (1, j)) for j, node in enumerate(professions))
 
-    opt_edges = [(left_nodes[i], right_nodes[j]) for i, j in zip(row_ind, col_ind)]
-    nx.draw_networkx_edges(G, pos, edgelist=opt_edges, edge_color='red', width=2)
+# Расчет размеров фигуры в зависимости от размера матрицы
+num_workers = cost_matrix.shape[0]
+num_professions = cost_matrix.shape[1]
+width = max(10, num_workers * 2)
+height = max(8, num_professions * 2)
 
-    plt.axis('off')
-    plt.title('Оптимальное назначение')
-    plt.tight_layout()
+plt.figure(figsize=(width, height))
 
-    st.pyplot(plt.gcf())
+    # Рисуем все ребра полупрозрачными линиями
+nx.draw_networkx_edges(G, pos, alpha=0.3)
+    
+    # Узлы работников и профессий
+nx.draw_networkx_nodes(G, pos, nodelist=workers, node_color='skyblue', node_size=500)
+nx.draw_networkx_nodes(G, pos, nodelist=professions, node_color='lightgreen', node_size=500)
+    
+    # Метки узлов
+nx.draw_networkx_labels(G, pos)
+
+    # Вписываем веса на ребра
+edge_labels = {(workers[i], professions[j]): f"{cost_matrix[i,j]}" 
+              for i in range(cost_matrix.shape[0]) 
+              for j in range(cost_matrix.shape[1])}
+nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels)
+
+    # Выделяем оптимальные ребра красным цветом
+optimal_edges = [(workers[i], professions[j]) for i,j in zip(row_ind,col_ind)]
+nx.draw_networkx_edges(G, pos, edgelist=optimal_edges, edge_color='red', width=2)
+
+plt.axis('off')
+plt.title('Оптимальное назначение')
+    
+st.pyplot(plt)
+end_time_graph = time.time()
+graph_time = end_time_graph - start_time_graph
+
+   # Вывод времени построения графа и отображения
+st.write(f"Время построения и отображения графа: {graph_time:.4f} секунд")
