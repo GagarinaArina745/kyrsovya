@@ -23,6 +23,11 @@ except Exception as e:
 # Выбор режима: минимизация или максимизация
 mode = st.radio("Выберите режим расчёта:", ("Минимум стоимости", "Максимум стоимости"))
 
+# Инициализация переменных для вывода
+result_text = ""
+total_value = None
+calc_time = None 
+
 if st.button("Рассчитать оптимальное назначение"):
     start_time = time.time() 
     if mode == "Минимум стоимости":
@@ -41,11 +46,12 @@ if st.button("Рассчитать оптимальное назначение")
     end_time = time.time()  # конец таймера
     elapsed_time = end_time - start_time
 
-st.write(f"Результаты ({mode_text}):")
-for i, j in zip(row_ind, col_ind):
-    st.write(f"Работник {i+1} → Профессия {j+1} (Стоимость: {cost_matrix[i,j]})")
-st.write("Общая сумма стоимости:", total_value)
-st.write(f"Время расчёта: {elapsed_time:.4f} секунд")
+# Вывод результатов
+    result_text += f"Результаты ({mode_text}):\n"
+    for i, j in zip(row_ind, col_ind):
+        result_text += f"Работник {i+1} → Профессия {j+1} (Стоимость: {cost_matrix[i,j]})\n"
+    result_text += f"Общая сумма стоимости: {total_value}\n"
+    result_text += f"Время расчёта: {calc_time:.4f} секунд\n"
 
 start_time_graph = time.time()
     # Создаем граф для визуализации
@@ -97,7 +103,6 @@ optimal_edges = [(workers[i], professions[j]) for i,j in zip(row_ind,col_ind)]
 nx.draw_networkx_edges(G, pos, edgelist=optimal_edges, edge_color='red', width=2)
 
 plt.axis('off')
-plt.title('Оптимальное назначение')
     
 st.pyplot(plt)
 end_time_graph = time.time()
@@ -105,3 +110,6 @@ graph_time = end_time_graph - start_time_graph
 
    # Вывод времени построения графа и отображения
 st.write(f"Время построения и отображения графа: {graph_time:.4f} секунд")
+# Вывод результатов после вычислений (если есть)
+if result_text:
+   st.text(result_text)
